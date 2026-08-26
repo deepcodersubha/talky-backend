@@ -6,12 +6,27 @@ import { voiceSessionRoutes } from "./voiceSession.routes";
 
 const router = Router();
 
-router.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    service: "talky-backend",
-  });
+router.get("/health", async (req, res) => {
+  try {
+    const { prisma } = await import("../config/database");
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      service: "talky-backend",
+      database: "connected",
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "degraded",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      service: "talky-backend",
+      database: "error",
+      error: error instanceof Error ? error.message : "Database connection failed",
+    });
+  }
 });
 
 router.use("/auth", authRoutes);

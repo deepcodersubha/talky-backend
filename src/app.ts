@@ -38,6 +38,30 @@ export const createApp = (): Application => {
     next();
   });
 
+  // Health check endpoint (root level)
+  app.get("/health", async (req, res) => {
+    try {
+      // Quick database ping
+      await import("./config/database").then(({ prisma }) => prisma.$queryRaw`SELECT 1`);
+      res.status(200).json({
+        status: "ok",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        service: "talky-backend",
+        database: "connected",
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "degraded",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        service: "talky-backend",
+        database: "error",
+        error: error instanceof Error ? error.message : "Database connection failed",
+      });
+    }
+  });
+
   // Base API routes
   app.use("/api/v1", apiRouter);
 
