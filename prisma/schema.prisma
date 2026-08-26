@@ -1,0 +1,114 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String         @id @default(uuid())
+  authIdentifier   String         @unique // email, phone, or external auth ID
+  passwordHash     String?
+  displayName      String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  devices          Device[]
+  createdCodes     PairingCode[]
+  pairingsAsOne    Pairing[]      @relation("UserOne")
+  pairingsAsTwo    Pairing[]      @relation("UserTwo")
+  voiceSessions    VoiceSession[]
+  settings         UserSetting[]
+
+  @@map("users")
+}
+
+model Device {
+  id         String    @id @default(uuid())
+  userId     String
+  platform   String    // "ANDROID" | "IOS" | "WEB"
+  pushToken  String?
+  appVersion String?
+  deviceId   String    @unique // Unique hardware / installation identifier
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model Pairing {
+  id               String         @id @default(uuid())
+  userOneId        String
+  userTwoId        String
+  status           String         @default("ACTIVE") // "ACTIVE" | "UNPAIRED"
+  agoraChannelName String         @unique // e.g. "talky_pair_<pairingId>"
+  pairedAt         DateTime       @default(now())
+  unpairedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  userOne          User           @relation("UserOne", fields: [userOneId], references: [id], onDelete: Cascade)
+  userTwo          User           @relation("UserTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
+  voiceSessions    VoiceSession[]
+  settings         UserSetting[]
+
+  @@unique([userOneId, userTwoId])
+  @@index([userOneId, status])
+  @@index([userTwoId, status])
+  @@map("pairings")
+}
+
+model PairingCode {
+  id            String    @id @default(uuid())
+  creatorUserId String
+  codeHash      String    @unique // SHA-256 hash of the 6-8 digit code
+  expiresAt     DateTime
+  isConsumed    Boolean   @default(false)
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  creatorUser   User      @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+
+  @@index([codeHash, isConsumed, expiresAt])
+  @@map("pairing_codes")
+}
+
+model VoiceSession {
+  id           String    @id @default(uuid())
+  pairingId    String
+  senderUserId String
+  status       String    @default("CREATED") // "CREATED" | "STARTING" | "ACTIVE" | "STOPPING" | "COMPLETED" | "FAILED" | "CANCELED"
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  pairing      Pairing   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  senderUser   User      @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([pairingId, status])
+  @@index([senderUserId, status])
+  @@map("voice_sessions")
+}
+
+model UserSetting {
+  id        String   @id @default(uuid())
+  userId    String
+  pairingId String
+  silenced  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pairing   Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pairingId])
+  @@index([userId, pairingId])
+  @@map("user_settings")
+}
