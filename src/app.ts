@@ -51,12 +51,15 @@ export const createApp = (): Application => {
         database: "connected",
       });
     } catch (error) {
+      const rawUrl = process.env.DATABASE_URL || "";
+      const maskedUrl = rawUrl ? `${rawUrl.substring(0, 10)}... (length: ${rawUrl.length})` : "NOT_SET";
       res.status(503).json({
         status: "degraded",
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
         service: "talky-backend",
         database: "error",
+        db_url_status: maskedUrl,
         error: error instanceof Error ? error.message : "Database connection failed",
       });
     }
