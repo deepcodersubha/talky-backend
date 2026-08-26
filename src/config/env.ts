@@ -6,7 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default("4000").transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().default("file:./dev.db"),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL environment variable is required"),
 
   JWT_ACCESS_SECRET: z.string().min(16, "JWT_ACCESS_SECRET must be at least 16 characters"),
   JWT_REFRESH_SECRET: z.string().min(16, "JWT_REFRESH_SECRET must be at least 16 characters"),
