@@ -38,10 +38,9 @@ export const createApp = (): Application => {
     next();
   });
 
-  // Health check endpoint (root level)
-  app.get("/health", async (req, res) => {
+  // Health check endpoint — available at both "/" and "/health"
+  const healthHandler = async (req: import("express").Request, res: import("express").Response) => {
     try {
-      // Quick database ping
       await import("./config/database").then(({ prisma }) => prisma.$queryRaw`SELECT 1`);
       res.status(200).json({
         status: "ok",
@@ -63,7 +62,10 @@ export const createApp = (): Application => {
         error: error instanceof Error ? error.message : "Database connection failed",
       });
     }
-  });
+  };
+
+  app.get("/", healthHandler);
+  app.get("/health", healthHandler);
 
   // Base API routes
   app.use("/api/v1", apiRouter);
