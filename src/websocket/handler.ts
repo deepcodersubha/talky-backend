@@ -110,12 +110,27 @@ export class WSHandler {
           OR: [{ userOneId: user.id }, { userTwoId: user.id }],
           status: "ACTIVE",
         },
-        select: { id: true },
+        select: { id: true, userOneId: true, userTwoId: true },
       });
 
       if (activePairing) {
         SessionManager.setMeta(socket, { activePairingId: activePairing.id });
         SessionManager.subscribePairing(user.id, activePairing.id);
+
+        // Immediately push peer's current presence to this socket.
+        // The mobile sends subscribe_pairing before the WS is open, so that
+        // message is silently dropped. Sending presence here during auth
+        // guarantees the online badge is always up to date.
+        const peerUserId =
+          activePairing.userOneId === user.id
+            ? activePairing.userTwoId
+            : activePairing.userOneId;
+        const isPeerOnline = SessionManager.isUserOnline(peerUserId);
+        SessionManager.sendToSocket(socket, "peer_presence_changed", {
+          peerUserId,
+          isOnline: isPeerOnline,
+          lastSeenAt: new Date().toISOString(),
+        });
       }
 
       SessionManager.sendToSocket(socket, "authenticated", {
@@ -123,7 +138,7 @@ export class WSHandler {
         activePairingId: activePairing?.id || null,
       });
 
-      // Broadcast online presence if transition from offline to online
+      // Broadcast online presence to peer if transitioning from offline → online
       if (!wasOnline) {
         await SessionManager.notifyPresenceChange(user.id, true);
       }
