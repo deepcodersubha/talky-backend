@@ -18,7 +18,8 @@ export type WSServerEvent =
   | "unpaired"
   | "token_expired"
   | "error"
-  | "heartbeat_ack";
+  | "heartbeat_ack"
+  | "voice_note_received";
 
 export interface WSIncomingMessage<T = unknown> {
   event: WSClientEvent;

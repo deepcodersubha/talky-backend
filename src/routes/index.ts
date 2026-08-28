@@ -3,6 +3,7 @@ import { authRoutes } from "./auth.routes";
 import { deviceRoutes } from "./device.routes";
 import { pairingRoutes } from "./pairing.routes";
 import { voiceSessionRoutes } from "./voiceSession.routes";
+import { voiceNoteRoutes } from "./voiceNote.routes";
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use("/auth", authRoutes);
 router.use("/devices", deviceRoutes);
 router.use("/pairings", pairingRoutes);
 router.use("/voice-sessions", voiceSessionRoutes);
+router.use("/voice-notes", voiceNoteRoutes);
 
 export const apiRouter = router;

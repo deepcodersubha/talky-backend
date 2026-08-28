@@ -21,6 +21,7 @@ model User {
   pairingsAsOne    Pairing[]      @relation("UserOne")
   pairingsAsTwo    Pairing[]      @relation("UserTwo")
   voiceSessions    VoiceSession[]
+  voiceNotes       VoiceNote[]
   settings         UserSetting[]
 
   @@map("users")
@@ -58,6 +59,7 @@ model Pairing {
   userOne          User           @relation("UserOne", fields: [userOneId], references: [id], onDelete: Cascade)
   userTwo          User           @relation("UserTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
   voiceSessions    VoiceSession[]
+  voiceNotes       VoiceNote[]
   settings         UserSetting[]
 
   @@unique([userOneId, userTwoId])
@@ -112,4 +114,24 @@ model UserSetting {
   @@unique([userId, pairingId])
   @@index([userId, pairingId])
   @@map("user_settings")
+}
+
+
+model VoiceNote {
+  id           String    @id @default(uuid())
+  pairingId    String
+  senderUserId String
+  audioUrl     String
+  durationMs   Int       @default(0)
+  isDelivered  Boolean   @default(false)
+  playedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  pairing      Pairing   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  senderUser   User      @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([pairingId, isDelivered])
+  @@index([senderUserId])
+  @@map("voice_notes")
 }

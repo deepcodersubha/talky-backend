@@ -1,3 +1,4 @@
+import path from "path";
 import express, { Application } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -66,6 +67,9 @@ export const createApp = (): Application => {
 
   app.get("/", healthHandler);
   app.get("/health", healthHandler);
+
+  // Static uploads serving
+  app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
   // Base API routes
   app.use("/api/v1", apiRouter);

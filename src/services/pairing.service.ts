@@ -120,27 +120,76 @@ export class PairingService {
         },
       });
 
-      // Create permanent 1-to-1 pairing
-      const newPairing = await tx.pairing.create({
-        data: {
-          userOneId: codeRecord.creatorUserId,
-          userTwoId: userId,
-          status: "ACTIVE",
-          agoraChannelName,
-          pairedAt: new Date(),
-        },
-        include: {
-          userOne: { select: { id: true, displayName: true, authIdentifier: true } },
-          userTwo: { select: { id: true, displayName: true, authIdentifier: true } },
+      // Check if a previous pairing between these two users already exists
+      const existingPairingRecord = await tx.pairing.findFirst({
+        where: {
+          OR: [
+            { userOneId: codeRecord.creatorUserId, userTwoId: userId },
+            { userOneId: userId, userTwoId: codeRecord.creatorUserId },
+          ],
         },
       });
 
-      // Initialize default user settings (unmuted)
-      await tx.userSetting.createMany({
-        data: [
-          { userId: codeRecord.creatorUserId, pairingId: newPairing.id, silenced: false },
-          { userId, pairingId: newPairing.id, silenced: false },
-        ],
+      let newPairing;
+      if (existingPairingRecord) {
+        // Reactivate existing pairing
+        newPairing = await tx.pairing.update({
+          where: { id: existingPairingRecord.id },
+          data: {
+            status: "ACTIVE",
+            agoraChannelName,
+            pairedAt: new Date(),
+            unpairedAt: null,
+          },
+          include: {
+            userOne: { select: { id: true, displayName: true, authIdentifier: true } },
+            userTwo: { select: { id: true, displayName: true, authIdentifier: true } },
+          },
+        });
+      } else {
+        // Create new permanent 1-to-1 pairing
+        newPairing = await tx.pairing.create({
+          data: {
+            userOneId: codeRecord.creatorUserId,
+            userTwoId: userId,
+            status: "ACTIVE",
+            agoraChannelName,
+            pairedAt: new Date(),
+          },
+          include: {
+            userOne: { select: { id: true, displayName: true, authIdentifier: true } },
+            userTwo: { select: { id: true, displayName: true, authIdentifier: true } },
+          },
+        });
+      }
+
+      // Initialize or reset default user settings (unmuted)
+      await tx.userSetting.upsert({
+        where: {
+          userId_pairingId: { userId: codeRecord.creatorUserId, pairingId: newPairing.id },
+        },
+        create: {
+          userId: codeRecord.creatorUserId,
+          pairingId: newPairing.id,
+          silenced: false,
+        },
+        update: {
+          silenced: false,
+        },
+      });
+
+      await tx.userSetting.upsert({
+        where: {
+          userId_pairingId: { userId, pairingId: newPairing.id },
+        },
+        create: {
+          userId,
+          pairingId: newPairing.id,
+          silenced: false,
+        },
+        update: {
+          silenced: false,
+        },
       });
 
       return newPairing;
